@@ -43,17 +43,17 @@ public class HBaseThriftClient {
 	}
 	
 	public static void main(String[] args) throws TTransportException {
-		HBaseThriftClient hbaseHelper = null;
+		HBaseThriftClient hbaseClient = null;
 		try {
-			hbaseHelper = new HBaseThriftClient("10.2.4.225", 9090);
-			hbaseHelper.openTransport();
+			hbaseClient = new HBaseThriftClient("10.2.4.225", 9090);
+			hbaseClient.openTransport();
 			
-			doSomeTest(hbaseHelper);
+			doSomeTest(hbaseClient);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			hbaseHelper.closeTransport();
+			hbaseClient.closeTransport();
 		}
 	}	
 	
