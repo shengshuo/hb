@@ -15,6 +15,7 @@ import java.util.Map.Entry;
 
 import org.apache.hadoop.hbase.thrift.generated.BatchMutation;
 import org.apache.hadoop.hbase.thrift.generated.Hbase;
+import org.apache.hadoop.hbase.thrift.generated.IOError;
 import org.apache.hadoop.hbase.thrift.generated.Mutation;
 import org.apache.hadoop.hbase.thrift.generated.TCell;
 import org.apache.hadoop.hbase.thrift.generated.TRowResult;
@@ -56,18 +57,16 @@ public class HBaseThriftClient {
 		}
 	}	
 	
-	public static void doSomeTest(HBaseThriftClient hbaseHelper) throws TException {
-		//testIterateRow("emp", "2", hbaseHelper);
-		testScanTable("test", "1", 1000, hbaseHelper);	
-
+	public static void doSomeTest(HBaseThriftClient client) throws TException {
 		String tableName = "test";
+		testScanTable(tableName, "", 1000, client);		
 		
 		String rowKey_R1 = "r1";
 		Map<String, String> kvpUpdate_r1 = new HashMap<String, String>();
 		kvpUpdate_r1.put("c1:cq3", "val_20150618_0920_1");
 		kvpUpdate_r1.put("c3:cq3", "val_20150618_0920_1");
 		kvpUpdate_r1.put("c3:cq333", "val_20150618_0920_1");
-		//testUpdateRow(tableName, rowKey_R1, kvpUpdate_r1, hbaseHelper);
+		//client.updateRow(tableName, rowKey_R1, kvpUpdate_r1);
 	
 		String rowKey_R2 = "r2";
 		Map<String, String> kvpUpdate_r2 = new HashMap<String, String>();
@@ -78,25 +77,28 @@ public class HBaseThriftClient {
 		Map<String, Map<String, String>> rowBatchData = new HashMap<String, Map<String, String>>();
 		rowBatchData.put(rowKey_R1, kvpUpdate_r1);
 		rowBatchData.put(rowKey_R2, kvpUpdate_r2);
-		//testUpdateRows(tableName, rowBatchData, client);
+		//client.updateRows(tableName, rowBatchData);
 		Map<String, String> attributes = new HashMap<String, String>();
-//		List<TRowResult> rowRslts = hbaseHelper.getRow("test", bytesKey.toString(), attributes);
+		//List<TRowResult> rowRslts = client.getRow("test", bytesKey.toString(), attributes);
 				
 		Map<String, String> kvpUpdate_bs = new HashMap<String, String>();
 		kvpUpdate_bs.put("c1:cq3", "val_20150519_1352");
 		kvpUpdate_bs.put("c3:cq3", "val_20150519_1352_c3_0");
 		kvpUpdate_bs.put("c3:cq333", "val_2015059_1352_1");
-		//testUpdateRow(tableName, rowKey_Bytes, kvpUpdate_bs, hbaseHelper);
-
+		//client.updateRow(tableName, "r3", kvpUpdate_bs);
+		
+		//client.deleteCell(tableName, "r3", "c2:cq4");	
+		
+		List<String> columns = new ArrayList<String>();
+		columns.add("c2:cq1");	
+		columns.add("c2:cq3");	
+		//client.deleteCells(tableName, "r3", columns);
+		
+		
+		client.deleteRow(tableName, "r3");
+		
+		testScanTable(tableName, "", 1000, client);	
 		System.out.println("Done.");
-	}
-	
-	public static void testUpdateRows(String tableName, Map<String, Map<String, String>> kvpBatchUpdate, HBaseThriftClient client)	throws TException {
-		client.updateRows(tableName, kvpBatchUpdate);
-	}
-	
-	public static void testUpdateRow(String tableName, String rowKey, Map<String, String> kvpUpdate, HBaseThriftClient client) throws TException {
-			client.updateRow(tableName, rowKey, kvpUpdate);
 	}
 	
 	public static void testIterateRow(String tableName, String rowKey, HBaseThriftClient client) throws TException {
@@ -131,6 +133,29 @@ public class HBaseThriftClient {
 		}
     }	
 	
+    public void deleteRow(String table, String rowKey) throws TException {
+    	ByteBuffer tableName = getByteBuffer(table);
+    	ByteBuffer row = getByteBuffer(rowKey);
+    	hbaseClient.deleteAllRow(tableName, row, getAttributesMap(new HashMap<String, String>()));
+    }
+    
+    public void deleteCell(String table, String rowKey, String column) throws TException {
+    	List<String> columns = new ArrayList<String>(1);
+    	columns.add(column);
+    	deleteCells(table, rowKey, columns);
+    }
+    
+    public void deleteCells(String table, String rowKey, List<String> columns) throws TException {
+    	boolean writeToWal = false;
+    	List<Mutation> mutations = new ArrayList<Mutation>();
+    	for (String column : columns) {
+    		mutations.add(new Mutation(false, getByteBuffer(column), null, writeToWal));
+    	}
+    	ByteBuffer tableName = getByteBuffer(table);
+    	ByteBuffer row = getByteBuffer(rowKey);
+    	hbaseClient.mutateRow(tableName, row, mutations, getAttributesMap(new HashMap<String, String>()));
+    }
+    
     public void updateRow(String table, String rowKey, Map<String, String> rowData) throws TException {	
 		boolean writeToWal = false;
 		Map<String, String> attributes = new HashMap<String, String>();
